@@ -1,23 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './single-key.css'
-import * as Tone from 'tone'
+import { Note } from './models';
 
-const SingleKey = (props: { name: string, note: Note }) => {
+const SingleKey = (props: { name: string, isActive?: boolean, note: Note, onClick: () => void }) => {
     const note = props.note;
+    const [isActive, setIsActive] = useState(props.isActive ?? false);
     const play = () => {
-        var synth = new Tone.Synth().toMaster()
-        synth.triggerAttackRelease(note.name + note.position, '8n')
-        console.log(props.name);
+        props.onClick();
     }
-    const label = (note: Note) => note.name + note.position;
+    useEffect(() => {
+        setIsActive(props.isActive ?? false);
+        setTimeout(() => {
+            if (props.isActive)
+                setIsActive(false);
+        }, 2000);
+    }, [props.isActive])
 
-    return <span className="key" onClick={() => play()}>
-        {label(note)}
+    const label = (note: Note) => note.name + note.octave;
+    return <span className={`key ${isActive ? 'active' : ''}`} onClick={() => play()}>
+        {label(note)}{isActive}
     </span>
 }
 
-interface Note {
-    name: string;
-    position: number;
-}
 export default SingleKey

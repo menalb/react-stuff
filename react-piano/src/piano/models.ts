@@ -14,3 +14,8 @@ export type BlackKey = BaseKey & {
 export type Octave = { notes: Key[], position: number; }
 
 export type Key = WhiteKey | BlackKey;
+
+export interface Note {
+    name: string;
+    octave: number;
+}

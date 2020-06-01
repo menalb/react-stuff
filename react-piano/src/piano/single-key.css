@@ -6,3 +6,7 @@
         padding: 0.25rem;
         width: 100%;
     }
+    
+    .key.active {
+        background-color: green;
+    }

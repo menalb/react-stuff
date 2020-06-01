@@ -1,24 +1,77 @@
-import React from 'react';
+import React, { useReducer, useState } from 'react';
 import SingleKey from './single-key';
 import './keyboard.css'
-import { Key, Octave } from './models';
+import { Key, Octave, Note } from './models';
+import WebMidi from 'webmidi'
+import * as Tone from 'tone'
 
-const Keyboard = () => <ul className="board">
-    {
-        octavesConfig.map((octave, index) =>
-            <span key={index}>
-                {RenderOctave(octave.notes, octave.position)}
-            </span>)
+
+const Keyboard = () => {
+
+    const [keysLayout, setKeysLayout] = useState(layout);
+
+    WebMidi.enable(() => {
+        console.log(WebMidi.inputs);
+        console.log(WebMidi.outputs);
+
+        var input = WebMidi.inputs[0];
+
+        input.addListener('noteon', 'all',
+            function (e) {
+                //console.log("Received 'noteon' message (" + e.note.name + e.note.octave + ").");
+                const noteToPlay = { name: e.note.name, octave: e.note.octave };
+                play(noteToPlay)
+
+                const d = keysLayout
+                    .map(x => {
+                        if (x.note.name === noteToPlay.name && x.note.octave === noteToPlay.octave) {
+                            return { ...x, isActive: true }
+                        }
+                        return { ...x }
+                    })
+
+                setKeysLayout(d);
+            }
+        );
+
+    })
+
+    const play = (note: Note) => {
+        var synth = new Tone.Synth().toMaster()
+        synth.triggerAttackRelease(note.name + note.octave, '8n')
     }
-</ul>
+    return <ul className="board">
+        {
+            keysLayout.map((x, index) => <span key={index}>
+                <li key={index} className={x.key.kind} >
+                    <SingleKey
+                        name={x.key.name}
+                        note={{ name: x.key.name, octave: x.octave }}
+                        isActive={x.isActive}
+                        onClick={() => play(x.note)}
+                    />
+                </li>
+            </span>)
+        }
+    </ul>
+}
 
-const RenderOctave = (keys: Key[], position: number) => <>
-    {keys.map((key, index) =>
-        <li key={index} className={key.kind} >
-            <SingleKey name={key.name} note={{ name: key.name, position: position }} />
-        </li>
-    )}
-</>
+// const RenderOctave = (keys: Key[], position: number, play: (note: Note) => void) => <>
+//     {keys.map((key, index) =>
+//         <li key={index} className={key.kind} >
+//             <SingleKey
+//                 name={key.name}
+//                 note={{ name: key.name, octave: position }}
+//                 onClick={() => play({ name: key.name, octave: position })}
+//             />
+//         </li>
+//     )}
+// </>
+
+
+const buildNote = (key: Key, octave: number): Note => ({ name: key.name, octave: octave })
+
+type layoutConfig = ({ key: Key, octave: number, note: Note, isActive: boolean })[];
 
 const keysConfig: Key[] = [
     { kind: 'white', name: 'C' },
@@ -39,5 +92,16 @@ const octavesConfig: Octave[] = [
     { notes: keysConfig, position: 4 },
     { notes: keysConfig, position: 5 },
 ]
+
+const layout: layoutConfig =
+    octavesConfig
+        .flatMap(acc =>
+            acc.notes.map(a => (
+                {
+                    key: a,
+                    octave: acc.position,
+                    note: buildNote(a, acc.position),
+                    isActive: false
+                })))
 
 export default Keyboard
