@@ -1,73 +1,62 @@
-import React, { useReducer, useState } from 'react';
+import React, { useReducer, useState, useEffect, useCallback } from 'react';
 import SingleKey from './single-key';
 import './keyboard.css'
 import { Key, Octave, Note } from './models';
-import WebMidi from 'webmidi'
 import * as Tone from 'tone'
+import MidiKeyboard from './midi-key';
 
 
 const Keyboard = () => {
 
+    const emptyPlaingnotes: Note[] = [];
     const [keysLayout, setKeysLayout] = useState(layout);
+    const [playingNotes, setPlayingNotes] = useState(emptyPlaingnotes);
 
-    WebMidi.enable(() => {
-        console.log(WebMidi.inputs);
-        console.log(WebMidi.outputs);
+    const DeActivate = (note: Note) => {
+        setPlayingNotes(playingNotes.filter(x => x.name !== note.name && x.octave! == note.octave));
+    }
 
-        var input = WebMidi.inputs[0];
+    useEffect(() => {
 
-        input.addListener('noteon', 'all',
-            function (e) {
-                //console.log("Received 'noteon' message (" + e.note.name + e.note.octave + ").");
-                const noteToPlay = { name: e.note.name, octave: e.note.octave };
-                play(noteToPlay)
+        console.log(playingNotes);
+        setKeysLayout(keysLayout
+            .map(x => {
+                if (playingNotes.find(note => x.note.name === note.name && x.note.octave === note.octave)) {
+                    return { ...x, isActive: true }
+                }
+                return { ...x, isActive: false }
+            }))
 
-                const d = keysLayout
-                    .map(x => {
-                        if (x.note.name === noteToPlay.name && x.note.octave === noteToPlay.octave) {
-                            return { ...x, isActive: true }
-                        }
-                        return { ...x }
-                    })
-
-                setKeysLayout(d);
-            }
-        );
-
-    })
+    }, [playingNotes])
 
     const play = (note: Note) => {
         var synth = new Tone.Synth().toMaster()
-        synth.triggerAttackRelease(note.name + note.octave, '8n')
+        synth.triggerAttackRelease(note.name + note.octave, '8n');
+        setPlayingNotes([...playingNotes, note]);
     }
-    return <ul className="board">
-        {
-            keysLayout.map((x, index) => <span key={index}>
-                <li key={index} className={x.key.kind} >
-                    <SingleKey
-                        name={x.key.name}
-                        note={{ name: x.key.name, octave: x.octave }}
-                        isActive={x.isActive}
-                        onClick={() => play(x.note)}
-                    />
-                </li>
-            </span>)
-        }
-    </ul>
+    return <div>
+        <MidiKeyboard onPlayedNote={(note) => play(note)} />
+        <ul className="board">
+            {
+                keysLayout.map((x, index) => <span key={index}>
+                    <li key={index} className={x.key.kind} >
+                        <SingleKey
+                            name={x.key.name}
+                            note={{ name: x.key.name, octave: x.octave }}
+                            play={x.isActive}
+                            onClick={() => play(x.note)}
+                            onDeActivate={(note) => DeActivate(note)}
+
+                        />
+                    </li>
+                </span>)
+            }
+        </ul>
+        <div>
+            {JSON.stringify(playingNotes)}
+        </div>
+    </div>
 }
-
-// const RenderOctave = (keys: Key[], position: number, play: (note: Note) => void) => <>
-//     {keys.map((key, index) =>
-//         <li key={index} className={key.kind} >
-//             <SingleKey
-//                 name={key.name}
-//                 note={{ name: key.name, octave: position }}
-//                 onClick={() => play({ name: key.name, octave: position })}
-//             />
-//         </li>
-//     )}
-// </>
-
 
 const buildNote = (key: Key, octave: number): Note => ({ name: key.name, octave: octave })
 
